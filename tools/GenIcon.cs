@@ -17,7 +17,7 @@ class GenIcon {
   [STAThread]
   static int Main(string[] args) {
     if (args.Length < 5) {
-      Console.Error.WriteLine("usage: genicon <source.png> <out.ico> <ink r,g,b> <interior r,g,b> <ring r,g,b|none> [out256.png]");
+      Console.Error.WriteLine("usage: genicon <source.png> <out.ico> <ink r,g,b> <interior r,g,b> <ring r,g,b|none> [out256.png] [--blink]");
       return 1;
     }
     string src = args[0], outIco = args[1];
@@ -25,7 +25,12 @@ class GenIcon {
     Color interior = ParseColor(args[3]);
     bool hasRing = !string.Equals(args[4], "none", StringComparison.OrdinalIgnoreCase);
     Color ring = hasRing ? ParseColor(args[4]) : Color.Empty;
-    string outPng = args.Length > 5 ? args[5] : null;
+    string outPng = null;
+    bool blink = false;
+    for (int i = 5; i < args.Length; i++) {
+      if (args[i] == "--blink") blink = true;
+      else if (outPng == null && args[i].EndsWith(".png", StringComparison.OrdinalIgnoreCase)) outPng = args[i];
+    }
     try {
       using (Bitmap source = new Bitmap(src)) {
         int w = source.Width, h = source.Height;
@@ -58,13 +63,27 @@ class GenIcon {
         // Flood the outer white over the PADDED rect so its margin turns transparent
         // too (flooding only the content rect left opaque white padding lines).
         bool[] background = FloodBackground(lum, w, h, r);
+        // For the blink variant, find the two largest enclosed white areas (the eyes).
+        int[] comp = null;
+        int eye1 = 0, eye2 = 0;
+        if (blink) {
+          List<long> sizes = new List<long>();
+          comp = LabelInterior(lum, background, r, w, sizes);
+          int[] top = TopTwo(sizes);
+          eye1 = top[0];
+          eye2 = top[1];
+        }
         using (Bitmap region = new Bitmap(r.Width, r.Height, PixelFormat.Format32bppArgb)) {
           for (int y = 0; y < r.Height; y++) {
             for (int x = 0; x < r.Width; x++) {
               int idx = (y + r.Top) * w + (x + r.Left);
               Color c;
               if (background[idx]) c = Color.FromArgb(0, ink);
-              else if (lum[idx] >= 200) c = Color.FromArgb(255, interior);
+              else if (lum[idx] >= 200) {
+                int li = y * r.Width + x;
+                bool isEye = comp != null && (comp[li] == eye1 || comp[li] == eye2) && eye1 != 0;
+                c = isEye ? Color.FromArgb(255, ink) : Color.FromArgb(255, interior); // blink = closed eyes
+              }
               else {
                 int a = 255 - lum[idx];
                 if (a < 20) a = 0;
@@ -125,6 +144,56 @@ class GenIcon {
       Console.Error.WriteLine("genicon failed: " + ex);
       return 1;
     }
+  }
+
+  // Labels connected areas of enclosed white (non-background, lum >= 200). Used to
+  // find the eyes for the blink variants.
+  static int[] LabelInterior(byte[] lum, bool[] background, Rectangle r, int w, List<long> sizes) {
+    int rw = r.Width, rh = r.Height;
+    int[] comp = new int[rw * rh];
+    int next = 0;
+    for (int i = 0; i < rw * rh; i++) {
+      if (comp[i] != 0) continue;
+      int gx = (i % rw) + r.Left, gy = (i / rw) + r.Top;
+      int gidx = gy * w + gx;
+      if (background[gidx] || lum[gidx] < 200) continue;
+      next++;
+      long size = 0;
+      Stack<int> st = new Stack<int>();
+      st.Push(i);
+      comp[i] = next;
+      while (st.Count > 0) {
+        int c = st.Pop();
+        size++;
+        int cx = c % rw, cy = c / rw;
+        if (cx > 0) TryPushInterior(st, comp, next, lum, background, r, w, c - 1);
+        if (cx < rw - 1) TryPushInterior(st, comp, next, lum, background, r, w, c + 1);
+        if (cy > 0) TryPushInterior(st, comp, next, lum, background, r, w, c - rw);
+        if (cy < rh - 1) TryPushInterior(st, comp, next, lum, background, r, w, c + rw);
+      }
+      sizes.Add(size);
+    }
+    return comp;
+  }
+
+  static void TryPushInterior(Stack<int> st, int[] comp, int id, byte[] lum, bool[] background,
+    Rectangle r, int w, int c) {
+    if (comp[c] != 0) return;
+    int gx = (c % r.Width) + r.Left, gy = (c / r.Width) + r.Top;
+    int gidx = gy * w + gx;
+    if (background[gidx] || lum[gidx] < 200) return;
+    comp[c] = id;
+    st.Push(c);
+  }
+
+  static int[] TopTwo(List<long> sizes) {
+    int e1 = 0, e2 = 0;
+    long s1 = 0, s2 = 0;
+    for (int c = 1; c <= sizes.Count; c++) {
+      if (sizes[c - 1] > s1) { s2 = s1; e2 = e1; s1 = sizes[c - 1]; e1 = c; }
+      else if (sizes[c - 1] > s2) { s2 = sizes[c - 1]; e2 = c; }
+    }
+    return new int[] { e1, e2 };
   }
 
   static Color ParseColor(string s) {

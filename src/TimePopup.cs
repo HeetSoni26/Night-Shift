@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 
 namespace NightShift {
-  // The flyout. Idle: enter days/hours/minutes, press Enter. Active: big countdown,
-  // quick-add buttons, custom add, and the press-and-hold end control.
+  // The flyout. Idle: enter days/hours/minutes, press Enter, or start an agent watch.
+  // Active: big countdown, quick-add buttons, custom add, and the press-and-hold end
+  // control. Agent-watch mode shows what is being watched instead of time buttons.
   class TimePopup : Form {
     static readonly Color Bg = Color.FromArgb(28, 33, 48);
     static readonly Color Fg = Color.FromArgb(232, 235, 244);
@@ -15,12 +17,13 @@ namespace NightShift {
     static readonly Color ButtonHover = Color.FromArgb(57, 66, 95);
     static readonly Color FieldBg = Color.FromArgb(18, 21, 31);
 
-    const int IdleHeight = 200;
+    const int IdleHeight = 206;
     const int ActiveHeight = 288;
     const int HoldTicksNeeded = 30; // 30 * 50ms = 1.5 s
 
     readonly SessionController _session;
     readonly Timer _holdTimer;
+    readonly List<Control> _timedOnly = new List<Control>();
     int _holdTicks;
 
     Panel _idlePanel;
@@ -28,9 +31,12 @@ namespace NightShift {
     NumericUpDown _numD, _numH, _numM;
     Button _btnStart;
     Button _btnAdd;
+    Button _btnAgent;
     Label _lblCountdown;
     Label _lblEndsAt;
     Label _lblHint;
+    Label _lblAgentInfo;
+    Label _lblAgentInfo2;
     Button _btnEnd;
     Label _lblHoldHint;
     HoldBar _holdBar;
@@ -147,7 +153,19 @@ namespace NightShift {
       _btnStart.Click += delegate { DoStart(); };
       _idlePanel.Controls.Add(_btnStart);
 
-      _lblHint = Lbl("Press Enter to start. Click the eye again to add time.", 16, 152, Dim, 8.75f, false);
+      _btnAgent = Btn("While my agent works (no timer)", 16, 148, 284, 28, ButtonBg, Fg);
+      _btnAgent.Click += delegate {
+        string err = _session.StartAgentWatch();
+        if (err != null) {
+          _lblHint.Text = err;
+          _lblHint.ForeColor = Danger;
+        } else {
+          Hide();
+        }
+      };
+      _idlePanel.Controls.Add(_btnAgent);
+
+      _lblHint = Lbl("Press Enter to start. Click the owl again to add time.", 16, 184, Dim, 8.75f, false);
       _idlePanel.Controls.Add(_lblHint);
 
       HookDrag(this);
@@ -183,6 +201,7 @@ namespace NightShift {
         Button b = Btn(text, 16 + i * 73, 88, 68, 30, ButtonBg, Fg);
         b.Click += delegate { _session.AddTime(TimeSpan.FromMinutes(mins)); };
         _activePanel.Controls.Add(b);
+        _timedOnly.Add(b);
       }
 
       NumericUpDown nd = Num(); nd.Location = new Point(16, 130);
@@ -203,6 +222,16 @@ namespace NightShift {
       _activePanel.Controls.Add(lh2);
       _activePanel.Controls.Add(lm2);
       _activePanel.Controls.Add(_btnAdd);
+      _timedOnly.Add(nd); _timedOnly.Add(nh); _timedOnly.Add(nm);
+      _timedOnly.Add(ld2); _timedOnly.Add(lh2); _timedOnly.Add(lm2); _timedOnly.Add(_btnAdd);
+
+      // Agent-watch mode replaces the time rows with this status text.
+      _lblAgentInfo = Lbl("ends after 5m quiet", 16, 92, Fg, 9.5f, false);
+      _lblAgentInfo2 = Lbl("The PC sleeps when the agent goes quiet.", 16, 114, Dim, 8.75f, false);
+      _lblAgentInfo.Visible = false;
+      _lblAgentInfo2.Visible = false;
+      _activePanel.Controls.Add(_lblAgentInfo);
+      _activePanel.Controls.Add(_lblAgentInfo2);
 
       _btnEnd = Btn("Hold to end", 16, 172, 180, 34, Color.FromArgb(70, 40, 44), Danger);
       _btnEnd.Font = new Font("Segoe UI", 10f, FontStyle.Bold);
@@ -248,12 +277,17 @@ namespace NightShift {
     public void UpdateState() {
       bool active = _session.Active;
       if (active) {
-        _lblCountdown.Text = _session.RemainingText();
-        _lblEndsAt.Text = "ends " + _session.EndsUtc.ToLocalTime().ToString("HH:mm");
+        bool agent = _session.AgentWatch;
+        _lblCountdown.Text = agent ? "watching" : _session.RemainingText();
+        _lblEndsAt.Text = agent ? "agent watch" : _session.SubtitleText();
+        _lblAgentInfo.Text = _session.SubtitleText();
+        foreach (Control c in _timedOnly) c.Visible = !agent;
+        _lblAgentInfo.Visible = agent;
+        _lblAgentInfo2.Visible = agent;
         _idlePanel.Visible = false;
         _activePanel.Visible = true;
         if (ClientSize.Height != ActiveHeight) ClientSize = new Size(316, ActiveHeight);
-        AcceptButton = _btnAdd;
+        AcceptButton = agent ? null : _btnAdd;
       } else {
         _activePanel.Visible = false;
         _idlePanel.Visible = true;

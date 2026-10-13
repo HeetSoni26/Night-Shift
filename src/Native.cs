@@ -51,6 +51,26 @@ namespace NightShift {
     [DllImport("kernel32.dll", SetLastError = true)]
     public static extern uint SetThreadExecutionState(uint esFlags);
 
+    // Global hotkey (Ctrl+Alt+N by default).
+    public const int WmHotkey = 0x0312;
+    public const uint ModAlt = 0x0001;
+    public const uint ModControl = 0x0002;
+    public const int HotkeyStartId = 1;
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+
+    // Per-process IO counters, used by the agent-watch activity detection.
+    [StructLayout(LayoutKind.Sequential)]
+    public struct IoCounters {
+      public ulong ReadOperationCount, WriteOperationCount, OtherOperationCount;
+      public ulong ReadTransferCount, WriteTransferCount, OtherTransferCount;
+    }
+    public const uint ProcessQueryLimitedInformation = 0x1000;
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern bool GetProcessIoCounters(IntPtr hProcess, out IoCounters counters);
+
     [StructLayout(LayoutKind.Sequential)]
     public struct SystemPowerStatus {
       public byte AcLineStatus;       // 0 = offline, 1 = online, 255 = unknown

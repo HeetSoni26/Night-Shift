@@ -13,8 +13,10 @@ namespace NightShift {
     int _beat;
     int _batteryPhase;
     bool _lowPowerApplied;
+    ActivityMonitor _monitor;
 
     public bool Active { get; private set; }
+    public bool AgentWatch { get; private set; }
     public DateTime StartedUtc { get; private set; }
     public DateTime EndsUtc { get; private set; }
     public TrayController Ui { get; set; }
@@ -46,6 +48,7 @@ namespace NightShift {
       StartedUtc = DateTime.UtcNow;
       EndsUtc = StartedUtc + span;
       Active = true;
+      AgentWatch = false;
       _journal.SessionActive = true;
       _journal.StartedUtc = StartedUtc.ToString("o");
       _journal.EndsUtc = EndsUtc.ToString("o");
@@ -58,6 +61,32 @@ namespace NightShift {
       catch (Exception ex) { Log.Warn("SetThreadExecutionState failed: " + ex.Message); }
       if (!ok) Log.Warn("some power settings could not be applied; the session continues anyway");
       Log.Info("session started, ends " + EndsUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss"));
+      UpdateUi();
+      return null;
+    }
+
+    // The agent-watch session: no timer. The owl stays awake while the watched process
+    // tree (ZCode by default) keeps working and ends the session after a quiet period.
+    public string StartAgentWatch() {
+      if (Active) return "A session is already running.";
+      StartedUtc = DateTime.UtcNow;
+      Active = true;
+      AgentWatch = true;
+      EndsUtc = DateTime.MaxValue;
+      _journal.SessionActive = true;
+      _journal.StartedUtc = StartedUtc.ToString("o");
+      _journal.EndsUtc = null; // no fixed end; heartbeat staleness drives recovery
+      _journal.HeartbeatUtc = StartedUtc.ToString("o");
+      _journal.Save(); // journal BEFORE touching power settings
+      bool ok = _power.ApplySessionSettings();
+      try { Native.SetThreadExecutionState(Native.EsContinuous | Native.EsSystemRequired); }
+      catch (Exception ex) { Log.Warn("SetThreadExecutionState failed: " + ex.Message); }
+      if (!ok) Log.Warn("some power settings could not be applied; the session continues anyway");
+      if (_monitor != null) { try { _monitor.Dispose(); } catch {} }
+      _monitor = new ActivityMonitor(_cfg.AgentWatchProcesses);
+      _monitor.Start();
+      Log.Info("agent watch session started (grace " + _cfg.AgentWatchGraceMinutes + "m, cap " +
+        (_cfg.AgentWatchMaxHours > 0 ? _cfg.AgentWatchMaxHours + "h" : "none") + ")");
       UpdateUi();
       return null;
     }
@@ -76,6 +105,9 @@ namespace NightShift {
       if (!Active) return;
       Active = false;
       Log.Info("session ended: " + reason);
+      int seconds = Math.Max(0, (int)(DateTime.UtcNow - StartedUtc).TotalSeconds);
+      if (_monitor != null) { try { _monitor.Dispose(); } catch {} _monitor = null; }
+      AgentWatch = false;
       try { _lid.RestoreIfAnyJournal(); }
       catch (Exception ex) { Log.Error("restoring lid effects failed", ex); }
       try { _power.UndoAll(); }
@@ -85,6 +117,7 @@ namespace NightShift {
       _lowPowerApplied = false;
       _journal.Clear();
       MaybeSleep();
+      try { if (seconds > 5) Stats.Add(seconds); } catch {}
       UpdateUi();
     }
 
@@ -111,7 +144,18 @@ namespace NightShift {
         _journal.HeartbeatUtc = DateTime.UtcNow.ToString("o");
         _journal.Save();
       }
-      if (DateTime.UtcNow >= EndsUtc) {
+      if (AgentWatch) {
+        TimeSpan quiet = TimeSpan.FromMinutes(QuietMinutes());
+        int grace = Math.Max(1, _cfg.AgentWatchGraceMinutes);
+        if (quiet.TotalMinutes >= grace) {
+          EndEarly("agent idle for " + (int)quiet.TotalMinutes + "m");
+          return;
+        }
+        if (_cfg.AgentWatchMaxHours > 0 && (DateTime.UtcNow - StartedUtc).TotalHours >= _cfg.AgentWatchMaxHours) {
+          EndEarly("agent watch cap of " + _cfg.AgentWatchMaxHours + "h reached");
+          return;
+        }
+      } else if (DateTime.UtcNow >= EndsUtc) {
         EndEarly("timer expired");
         return;
       }
@@ -200,9 +244,29 @@ namespace NightShift {
     }
 
     public string RemainingText() {
+      if (AgentWatch) {
+        int left = Math.Max(0, Math.Max(1, _cfg.AgentWatchGraceMinutes) - (int)QuietMinutes());
+        return left <= 0 ? "agent watch, ending soon" : "agent watch, " + left + "m quiet left";
+      }
       TimeSpan r = EndsUtc - DateTime.UtcNow;
       if (r < TimeSpan.Zero) r = TimeSpan.Zero;
       return string.Format("{0}d {1:00}:{2:00}:{3:00}", (int)r.TotalDays, r.Hours, r.Minutes, r.Seconds);
+    }
+
+    // One-line status for the popup and menu: when the session ends, and whether the
+    // watched app was detected at all.
+    public string SubtitleText() {
+      if (AgentWatch) {
+        string app = (_monitor != null && _monitor.AnyWatchedRunning)
+          ? "watched app running" : "watched app not detected";
+        return "ends after " + Math.Max(1, _cfg.AgentWatchGraceMinutes) + "m quiet - " + app;
+      }
+      return "ends " + EndsUtc.ToLocalTime().ToString("HH:mm");
+    }
+
+    double QuietMinutes() {
+      DateTime last = _monitor != null ? _monitor.LastActivityUtc : StartedUtc;
+      return (DateTime.UtcNow - last).TotalMinutes;
     }
 
     void UpdateUi() {

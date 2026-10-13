@@ -80,7 +80,7 @@ namespace NightShift {
         using (PowerEventsWatcher w = new PowerEventsWatcher()) {
           using (ManualResetEvent ev = new ManualResetEvent(false)) {
             w.LidChanged += delegate(bool closed) { got = true; state = closed; ev.Set(); };
-            w.Start();
+            w.Start(false);
             registered = w.Registered;
             ev.WaitOne(2000);
           }
@@ -122,6 +122,32 @@ namespace NightShift {
         bool ok = failed == 0 && c1 == lac && c2 == ldc && d1 == sac && d2 == sdc;
         Out(ok ? "PASS  power apply/undo verified (original settings restored)" : "FAIL  power state mismatch after undo");
         return ok ? 0 : 1;
+      } catch (Exception ex) {
+        Out("FAIL  " + ex.GetType().Name + ": " + ex.Message);
+        return 1;
+      }
+    }
+
+    // Watches the given process list for a few seconds and prints the activity state,
+    // so the agent-watch detection can be verified without starting a session.
+    public static int TestAgentWatch(string names, int seconds) {
+      try {
+        IsolateDataDir();
+        Log.Init();
+        Out("watching '" + names + "' for " + seconds + "s; use the watched apps now to see transitions");
+        using (ActivityMonitor m = new ActivityMonitor(names)) {
+          m.Start();
+          DateTime until = DateTime.UtcNow.AddSeconds(seconds);
+          while (DateTime.UtcNow < until) {
+            Thread.Sleep(1000);
+            TimeSpan quiet = DateTime.UtcNow - m.LastActivityUtc;
+            Out("  running=" + (m.AnyWatchedRunning ? "yes" : "no ") +
+                "  quiet=" + (int)quiet.TotalSeconds + "s" +
+                (m.AnyWatchedRunning && quiet.TotalSeconds < 3 ? "  [ACTIVE]" : ""));
+          }
+        }
+        Out("done");
+        return 0;
       } catch (Exception ex) {
         Out("FAIL  " + ex.GetType().Name + ": " + ex.Message);
         return 1;

@@ -7,9 +7,10 @@ using System.Windows.Forms;
 namespace NightShift {
   class SettingsForm : Form {
     readonly Config _cfg;
-    CheckBox _cDisplay, _cMute, _cFreeze, _cFreezeAll, _cSkipMeetings, _cThermal, _cSleepOnEnd, _cRecovery;
+    CheckBox _cDisplay, _cMute, _cFreeze, _cFreezeAll, _cSkipMeetings, _cThermal, _cSleepOnEnd, _cRecovery, _cHotkey;
     TextBox _tFreezeApps;
-    NumericUpDown _nLowPower, _nEndBattery, _nLowPowerDim, _nThermalHigh, _nThermalEnd;
+    TextBox _tWatchProcs;
+    NumericUpDown _nLowPower, _nEndBattery, _nLowPowerDim, _nThermalHigh, _nThermalEnd, _nGrace, _nMaxHours, _nHotkeyHours;
     Button _btnRepair;
 
     public SettingsForm(Config cfg) {
@@ -19,7 +20,7 @@ namespace NightShift {
       MaximizeBox = false;
       MinimizeBox = false;
       StartPosition = FormStartPosition.CenterScreen;
-      ClientSize = new Size(486, 586);
+      ClientSize = new Size(486, 772);
       Font = new Font("Segoe UI", 9f);
       try { Icon = IconFactory.OwlIcon(false); } catch {}
 
@@ -66,15 +67,34 @@ namespace NightShift {
       _btnRepair.Click += delegate { EnsureRecoveryTask(true); };
       g5.Controls.Add(_btnRepair);
 
+      GroupBox g6 = Group("Agent watch", 10, 546, 466, 96);
+      Plain(g6, "Watched processes", 14, 26);
+      _tWatchProcs = new TextBox();
+      _tWatchProcs.Location = new Point(150, 22);
+      _tWatchProcs.Size = new Size(300, 24);
+      g6.Controls.Add(_tWatchProcs);
+      Plain(g6, "End after", 14, 58);
+      _nGrace = Num(g6, 78, 54, 50);
+      Plain(g6, "min of quiet", 132, 58);
+      Plain(g6, "cap", 240, 58);
+      _nMaxHours = Num(g6, 268, 54, 50);
+      Plain(g6, "h  (0 = no cap)", 322, 58);
+
+      GroupBox g7 = Group("Hotkey", 10, 650, 466, 62);
+      _cHotkey = Check(g7, "Ctrl+Alt+N starts a session (adds time if one is running)", 14, 24);
+      Plain(g7, "default", 300, 26);
+      _nHotkeyHours = Num(g7, 350, 22, 50);
+      Plain(g7, "h", 404, 26);
+
       Button ok = new Button();
       ok.Text = "Save";
       ok.Size = new Size(90, 30);
-      ok.Location = new Point(272, 514);
+      ok.Location = new Point(272, 722);
       ok.Click += delegate { SaveAndClose(); };
       Button cancel = new Button();
       cancel.Text = "Cancel";
       cancel.Size = new Size(90, 30);
-      cancel.Location = new Point(372, 514);
+      cancel.Location = new Point(372, 722);
       cancel.DialogResult = DialogResult.Cancel;
       Controls.Add(ok);
       Controls.Add(cancel);
@@ -136,6 +156,11 @@ namespace NightShift {
       _nThermalEnd.Value = Clamp((int)_cfg.ThermalEndC);
       _cSleepOnEnd.Checked = _cfg.SleepOnEndIfLidClosed;
       _cRecovery.Checked = _cfg.RecoveryTaskEnabled;
+      _tWatchProcs.Text = _cfg.AgentWatchProcesses ?? "";
+      _nGrace.Value = Clamp(_cfg.AgentWatchGraceMinutes);
+      _nMaxHours.Value = Clamp(_cfg.AgentWatchMaxHours);
+      _cHotkey.Checked = _cfg.HotkeyEnabled;
+      _nHotkeyHours.Value = Clamp(Math.Max(1, _cfg.HotkeyHours));
     }
 
     decimal Clamp(int v) { return Math.Max(0, Math.Min(200, v)); }
@@ -155,6 +180,11 @@ namespace NightShift {
       _cfg.ThermalEndC = (double)_nThermalEnd.Value;
       _cfg.SleepOnEndIfLidClosed = _cSleepOnEnd.Checked;
       _cfg.RecoveryTaskEnabled = _cRecovery.Checked;
+      _cfg.AgentWatchProcesses = _tWatchProcs.Text.Trim();
+      _cfg.AgentWatchGraceMinutes = Math.Max(1, (int)_nGrace.Value);
+      _cfg.AgentWatchMaxHours = (int)_nMaxHours.Value;
+      _cfg.HotkeyEnabled = _cHotkey.Checked;
+      _cfg.HotkeyHours = Math.Max(1, (int)_nHotkeyHours.Value);
       _cfg.Save();
       if (_cfg.RecoveryTaskEnabled) EnsureRecoveryTask(true);
       DialogResult = DialogResult.OK;

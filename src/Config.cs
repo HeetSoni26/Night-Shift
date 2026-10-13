@@ -46,6 +46,16 @@ namespace NightShift {
     public bool RecoveryTaskEnabled { get; set; }
     public string RecoveryTaskName { get; set; }
 
+    // Agent watch: keep awake while the watched process tree (ZCode) is working, end
+    // the session after this many quiet minutes. MaxHours caps it (0 = no cap).
+    public string AgentWatchProcesses { get; set; }
+    public int AgentWatchGraceMinutes { get; set; }
+    public int AgentWatchMaxHours { get; set; }
+
+    // Global hotkey: Ctrl+Alt+N starts this many hours (or adds them if already running).
+    public bool HotkeyEnabled { get; set; }
+    public int HotkeyHours { get; set; }
+
     public Config() {
       FirstRunSeen = false;
       DisplayOffOnLidClose = true;
@@ -63,6 +73,11 @@ namespace NightShift {
       SleepOnEndIfLidClosed = true;
       RecoveryTaskEnabled = true;
       RecoveryTaskName = "NightShiftRecovery";
+      AgentWatchProcesses = "ZCode";
+      AgentWatchGraceMinutes = 5;
+      AgentWatchMaxHours = 8;
+      HotkeyEnabled = true;
+      HotkeyHours = 1;
     }
 
     public static Config Load() {

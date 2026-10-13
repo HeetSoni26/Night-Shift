@@ -11,7 +11,8 @@ namespace NightShift {
       Application.EnableVisualStyles();
       Application.SetCompatibleTextRenderingDefault(false);
       if (args != null && args.Length > 0) {
-        foreach (string a in args) {
+        for (int i = 0; i < args.Length; i++) {
+          string a = args[i];
           if (a == "--recover") {
             try {
               Paths.EnsureDirs();
@@ -22,12 +23,23 @@ namespace NightShift {
           }
           if (a == "--selftest") { Log.Init(); return Diagnostics.SelfTest(); }
           if (a == "--test-power") { Log.Init(); return Diagnostics.TestPower(); }
+          if (a == "--test-agent-watch") {
+            string names = args.Length > i + 1 ? args[i + 1] : "ZCode";
+            int secs = 30;
+            if (args.Length > i + 2) {
+              int parsed;
+              if (int.TryParse(args[i + 2], out parsed)) secs = parsed;
+            }
+            Log.Init();
+            return Diagnostics.TestAgentWatch(names, secs);
+          }
           if (a == "--help" || a == "-h") {
             Console.WriteLine("NightShift - keeps your PC awake with the lid closed, for timed sessions");
-            Console.WriteLine("  (no args)      run as a tray app");
-            Console.WriteLine("  --recover      undo pending changes (used by the recovery task)");
-            Console.WriteLine("  --selftest     read-only diagnostics");
-            Console.WriteLine("  --test-power   apply and immediately undo power settings, verify restore");
+            Console.WriteLine("  (no args)           run as a tray app");
+            Console.WriteLine("  --recover           undo pending changes (used by the recovery task)");
+            Console.WriteLine("  --selftest          read-only diagnostics");
+            Console.WriteLine("  --test-power        apply and immediately undo power settings, verify restore");
+            Console.WriteLine("  --test-agent-watch  <processes> <seconds>: watch a process tree, print activity");
             return 0;
           }
         }
@@ -77,7 +89,7 @@ namespace NightShift {
       _journal = Journal.Load();
       _power = new PowerManager(_journal);
       _watcher = new PowerEventsWatcher();
-      _watcher.Start();
+      _watcher.Start(_cfg.HotkeyEnabled);
       _lid = new LidActions(_cfg, _journal, IsSessionActive);
       _session = new SessionController(_cfg, _journal, _power, _lid, _watcher);
       _tray = new TrayController(_cfg, _session, ExitApp);
@@ -94,8 +106,18 @@ namespace NightShift {
       _watcher.ThemeChanged += delegate {
         try {
           IconFactory.ClearCache();
-          if (_tray != null) _tray.UpdateVisual();
+          if (_tray != null) _tray.RefreshIconNow();
         } catch (Exception ex) { Log.Error("theme change refresh", ex); }
+      };
+      _watcher.HotkeyPressed += delegate {
+        try {
+          if (_session.Active) {
+            _session.AddTime(new TimeSpan(Math.Max(1, _cfg.HotkeyHours), 0, 0));
+          } else {
+            string err = _session.Start(0, Math.Max(1, _cfg.HotkeyHours), 0);
+            if (err != null) Log.Warn("hotkey start rejected: " + err);
+          }
+        } catch (Exception ex) { Log.Error("hotkey action", ex); }
       };
       _watcher.Suspended += delegate {
         try {

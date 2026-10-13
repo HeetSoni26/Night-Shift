@@ -52,11 +52,14 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1
 | | |
 |---|---|
 | **Timed sessions** | Click the owl, enter days / hours / minutes, press Enter. Add time or end early at any moment. |
-| **Adaptive tray owl** | Black on a light taskbar, white on a dark one, following the system theme live. The owl inverts while a session runs. |
+| **Agent watch** | Keep awake while your agent (ZCode by default) works - no timer to guess. The session ends after a quiet period, so the PC sleeps when the work is done, not before. |
+| **Adaptive tray owl** | Black on a light taskbar, white on a dark one, following the system theme live. The owl inverts and blinks while a session runs. |
+| **Global hotkey** | Ctrl+Alt+N starts (or extends) a session from anywhere. |
+| **Session stats** | Lifetime counters in the tray menu: shifts worked, hours kept awake. |
 | **Journal-before-apply safety** | Every power change is written to disk, with its exact undo, *before* it is applied. |
 | **Self-healing** | A scheduled recovery task undoes everything within a minute if the app ever dies mid-session. |
 | **Quiet lid close** | Display off, audio muted, and optionally apps frozen (Slack, Discord, ...). Meeting and recording apps are never touched. |
-| **Guards** | Low-power mode and session-end thresholds for battery; best-effort heat rules. |
+| **Guards** | Low-power mode and session-end thresholds for battery; best-effort heat rules; an optional cap on agent-watch sessions. |
 | **Browser unthrottling** | One-click relaunch of a running Chromium browser with background throttling disabled. |
 | **Zero footprint** | No admin rights, no SDK, no runtime install. One exe built with the compiler Windows already ships. |
 
@@ -65,6 +68,8 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1
 | You want to... | Do this |
 |---|---|
 | Start a session | Click the owl, type `d` / `h` / `m`, press **Enter** |
+| Keep awake while an agent works | Click the owl, then **While my agent works** - ends automatically when the agent goes quiet (default: 5 quiet minutes) |
+| Start from anywhere | Press **Ctrl+Alt+N** for the default session length (adds time if one is running) |
 | Add time | Click the owl again, or use the `+15m` `+30m` `+1h` `+6h` buttons |
 | End early | **Press and hold** the red hold-to-end control for 1.5 s |
 
@@ -77,9 +82,11 @@ Right-click the owl for status, add time, end early, *Relaunch browser unthrottl
 3. **If anything dies:** the `NightShiftRecovery` task runs `NightShift.exe --recover` every minute and uses the journal to undo everything, resume frozen apps, unmute and restore brightness by itself.
 4. **Timer end:** all settings are restored exactly; if the lid is still closed with no external display, the machine is put to sleep.
 
+**Agent watch** replaces the timer with activity detection: NightShift polls the watched process tree (ZCode by default, configurable) for tool-call spawns, CPU time and file I/O - the fingerprints of an agent at work. As long as any of them moves, the session holds. When everything goes quiet for the configured grace period (5 minutes by default, with an optional 8-hour cap), the session ends and the machine sleeps. Back-to-back tasks never trip it: activity between tasks resets the countdown.
+
 ## Configuration
 
-Right-click the owl and open Settings: lid-close actions (display off, mute, app freezing), battery thresholds (low-power below 40% and end below 10% by default, 0 disables each), heat rules, and whether to sleep at session end when the lid is still closed.
+Right-click the owl and open Settings: lid-close actions (display off, mute, app freezing), battery thresholds (low-power below 40% and end below 10% by default, 0 disables each), heat rules, whether to sleep at session end when the lid is still closed, agent watch (watched processes, quiet period, hour cap) and the global hotkey.
 
 | File | Purpose |
 |---|---|
@@ -87,7 +94,7 @@ Right-click the owl and open Settings: lid-close actions (display off, mute, app
 | `%LOCALAPPDATA%\NightShift\journal.json` | Recovery journal (transient, empty when idle) |
 | `%LOCALAPPDATA%\NightShift\Logs\` | Daily logs, 14-day retention |
 
-Command line: `--recover` (used by the task), `--selftest` (read-only diagnostics), `--test-power` (apply and undo power settings, verify the restore).
+Command line: `--recover` (used by the task), `--selftest` (read-only diagnostics), `--test-power` (apply and undo power settings, verify the restore), `--test-agent-watch <processes> <seconds>` (watch a process tree and print its activity).
 
 ## Build from source
 

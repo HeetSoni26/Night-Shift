@@ -15,6 +15,8 @@ namespace NightShift {
     static Icon _idleDark;
     static Icon _activeLight;
     static Icon _activeDark;
+    static Icon _activeLightBlink;
+    static Icon _activeDarkBlink;
 
     // The taskbar follows the system theme (not the app theme).
     public static bool SystemUsesDarkTheme() {
@@ -31,11 +33,19 @@ namespace NightShift {
     }
 
     public static Icon OwlIcon(bool active) {
+      return OwlIcon(active, false);
+    }
+
+    public static Icon OwlIcon(bool active, bool blink) {
       bool dark = SystemUsesDarkTheme();
-      if (dark) return active ? Get(ref _activeDark, "NightShiftActiveDark.ico")
-                              : Get(ref _idleDark, "NightShiftIdleDark.ico");
-      return active ? Get(ref _activeLight, "NightShiftActiveLight.ico")
-                    : Get(ref _idleLight, "NightShiftIdleLight.ico");
+      if (active) {
+        if (dark) return blink ? Get(ref _activeDarkBlink, "NightShiftActiveDarkBlink.ico")
+                                : Get(ref _activeDark, "NightShiftActiveDark.ico");
+        return blink ? Get(ref _activeLightBlink, "NightShiftActiveLightBlink.ico")
+                     : Get(ref _activeLight, "NightShiftActiveLight.ico");
+      }
+      return dark ? Get(ref _idleDark, "NightShiftIdleDark.ico")
+                  : Get(ref _idleLight, "NightShiftIdleLight.ico");
     }
 
     // Called when the system theme flips (light <-> dark): drop the cached icons so
@@ -45,6 +55,8 @@ namespace NightShift {
       Dispose(ref _idleDark);
       Dispose(ref _activeLight);
       Dispose(ref _activeDark);
+      Dispose(ref _activeLightBlink);
+      Dispose(ref _activeDarkBlink);
     }
 
     static Icon Get(ref Icon cache, string name) {

@@ -9,6 +9,7 @@ namespace NightShift {
   // on purpose - message-only windows do not receive power broadcasts.
   class PowerEventsWatcher : Form {
     IntPtr _lidNotify;
+    bool _hotkeyRegistered;
     public bool Registered { get; private set; }
     public bool LidCurrentlyClosed { get; private set; }
 
@@ -17,6 +18,7 @@ namespace NightShift {
     public event Action Resumed = delegate { };
     public event Action PowerStatusChanged = delegate { };
     public event Action ThemeChanged = delegate { };
+    public event Action HotkeyPressed = delegate { };
 
     public PowerEventsWatcher() {
       FormBorderStyle = FormBorderStyle.None;
@@ -27,19 +29,30 @@ namespace NightShift {
       Opacity = 0;
     }
 
-    public void Start() {
+    public void Start(bool registerHotkey) {
       Guid g = Native.GuidLidSwitchStateChange;
       IntPtr h = Handle; // force handle creation; the window never needs to be shown
       _lidNotify = Native.RegisterPowerSettingNotification(h, ref g, 0 /* window handle */);
       Registered = _lidNotify != IntPtr.Zero;
       if (!Registered) Log.Warn("lid notification registration failed");
       else Log.Info("power events watcher running");
+      if (registerHotkey) {
+        // 'N' = 0x4E
+        _hotkeyRegistered = Native.RegisterHotKey(h, Native.HotkeyStartId,
+          Native.ModControl | Native.ModAlt, 0x4E);
+        if (_hotkeyRegistered) Log.Info("global hotkey Ctrl+Alt+N registered");
+        else Log.Warn("global hotkey Ctrl+Alt+N could not be registered (combination already taken)");
+      }
     }
 
     public void Stop() {
       if (_lidNotify != IntPtr.Zero) {
         try { Native.UnregisterPowerSettingNotification(_lidNotify); } catch {}
         _lidNotify = IntPtr.Zero;
+      }
+      if (_hotkeyRegistered) {
+        try { Native.UnregisterHotKey(Handle, Native.HotkeyStartId); } catch {}
+        _hotkeyRegistered = false;
       }
     }
 
@@ -77,6 +90,8 @@ namespace NightShift {
             ThemeChanged();
           }
         } catch {}
+      } else if (m.Msg == Native.WmHotkey && m.WParam.ToInt32() == Native.HotkeyStartId) {
+        HotkeyPressed();
       }
       base.WndProc(ref m);
     }
