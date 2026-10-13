@@ -35,7 +35,7 @@ namespace NightShift {
       UpdateUi();
     }
 
-    // Idle: starts a session. Active: adds time (same gesture as the macOS app).
+    // Idle: starts a session. Active: adds time (the same click gesture).
     public string Start(int days, int hours, int minutes) {
       TimeSpan span = new TimeSpan(days, hours, minutes);
       if (span <= TimeSpan.Zero) return "Enter a duration above zero.";
@@ -88,7 +88,7 @@ namespace NightShift {
       UpdateUi();
     }
 
-    // Mirror of the macOS behavior: a session that ends with the lid still closed puts
+    // A session that ends with the lid still closed puts
     // the machine to sleep, unless an external display is in use (clamshell mode).
     void MaybeSleep() {
       if (!_cfg.SleepOnEndIfLidClosed) return;

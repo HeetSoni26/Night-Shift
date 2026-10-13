@@ -10,9 +10,15 @@
 </p>
 
 <p align="center">
-  <img alt="platform" src="https://img.shields.io/badge/platform-Windows%2010%20%2F%2011-0078D6?logo=windows11&logoColor=white">
+  <a href="https://github.com/HeetSoni26/Night-Shift/releases/latest">
+    <img alt="Download for Windows" src="https://img.shields.io/badge/Download-Windows%2010%2F%2011-0078D6?style=for-the-badge&logo=windows11&logoColor=white">
+  </a>
+</p>
+
+<p align="center">
   <img alt="dependencies" src="https://img.shields.io/badge/dependencies-none-success">
   <img alt="admin" src="https://img.shields.io/badge/admin%20rights-not%20required-success">
+  <img alt="runtime" src="https://img.shields.io/badge/runtime-.NET%20Framework%204.8%20(built%20in)-informational">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-informational">
 </p>
 
@@ -26,28 +32,33 @@ Windows puts your laptop to sleep the moment you close the lid. That is exactly 
 
 NightShift holds the machine awake for exactly as long as you asked, then quietly puts everything back the way it was.
 
+## Download
+
+Grab the latest build from the [releases page](https://github.com/HeetSoni26/Night-Shift/releases/latest):
+
+| File | For |
+|---|---|
+| **`NightShift-Windows-x.x.x.zip`** | Recommended. App + double-click installer + uninstaller |
+| **`NightShift.exe`** | Portable. The app alone, no installer |
+
+Extract the zip and double-click **`install.cmd`**. That single step installs the app, registers the recovery task, adds a startup shortcut and starts the owl in your tray. From a terminal instead:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install.ps1
+```
+
 ## Features
 
 | | |
 |---|---|
 | **Timed sessions** | Click the owl, enter days / hours / minutes, press Enter. Add time or end early at any moment. |
-| **Adaptive tray owl** | Black on a light taskbar, white on a dark one. The owl inverts while a session runs. |
+| **Adaptive tray owl** | Black on a light taskbar, white on a dark one, following the system theme live. The owl inverts while a session runs. |
 | **Journal-before-apply safety** | Every power change is written to disk, with its exact undo, *before* it is applied. |
 | **Self-healing** | A scheduled recovery task undoes everything within a minute if the app ever dies mid-session. |
 | **Quiet lid close** | Display off, audio muted, and optionally apps frozen (Slack, Discord, ...). Meeting and recording apps are never touched. |
 | **Guards** | Low-power mode and session-end thresholds for battery; best-effort heat rules. |
 | **Browser unthrottling** | One-click relaunch of a running Chromium browser with background throttling disabled. |
 | **Zero footprint** | No admin rights, no SDK, no runtime install. One exe built with the compiler Windows already ships. |
-
-## Install
-
-```powershell
-git clone https://github.com/HeetSoni26/Night-Shift.git
-cd Night-Shift
-powershell -ExecutionPolicy Bypass -File .\install.ps1
-```
-
-Requirements: Windows 10 (1709+) or Windows 11, laptop or desktop. The installer builds the exe, copies it to `%LOCALAPPDATA%\Programs\NightShift`, registers the recovery task, adds a startup shortcut and starts the owl in your tray.
 
 ## Usage
 
@@ -80,15 +91,13 @@ Command line: `--recover` (used by the task), `--selftest` (read-only diagnostic
 
 ## Build from source
 
-```
-build.cmd
+```powershell
+git clone https://github.com/HeetSoni26/Night-Shift.git
+cd Night-Shift
+.\build.cmd
 ```
 
 Compiles `src\*.cs` with the .NET Framework 4 C# compiler that ships with Windows and regenerates the tray icons from `icon\owl-source.png`. No SDK, no NuGet, no internet access needed.
-
-## Differences from the macOS original
-
-NightShift is a Windows port of [krishhgg/Insomnia](https://github.com/krishhgg/Insomnia) (macOS). Differences: no iPhone hotspot handoff and no tmux nudge (both are macOS-specific); "low power mode" uses the Windows power-mode overlay, falling back to panel dimming where overlays are unsupported; the microphone is not hardware-disconnected on lid close. Added for Windows: adaptive tray theming, monitor power-off, an execution-state hold for Modern Standby machines, and Windows-tuned browser relaunch flags. Unlike the macOS version, no elevation is required at all.
 
 ## FAQ
 
@@ -109,9 +118,9 @@ The battery guards end the session at your thresholds, and the recovery task mea
 
 <details>
 <summary>How do I remove it?</summary>
-`powershell -ExecutionPolicy Bypass -File .\uninstall.ps1` keeps your settings; add `-Purge` to wipe them too.
+`uninstall.cmd` from the release zip, or `powershell -ExecutionPolicy Bypass -File .\uninstall.ps1` keeps your settings; add `-Purge` to wipe them too.
 </details>
 
-## Credits
+## License
 
-Concept and macOS original: [krishhgg/Insomnia](https://github.com/krishhgg/Insomnia), MIT licensed. Windows port by [HeetSoni26](https://github.com/HeetSoni26). See [LICENSE](LICENSE).
+MIT © [HeetSoni26](https://github.com/HeetSoni26). See [LICENSE](LICENSE).

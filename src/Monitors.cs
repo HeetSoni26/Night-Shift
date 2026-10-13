@@ -18,7 +18,7 @@ namespace NightShift {
     }
 
     // WMI thermal zones are motherboard zones on many machines and missing on others;
-    // this is best effort, like the heat rules in the macOS original.
+    // this is best effort; many machines expose no usable sensor.
     public static double? TemperatureC() {
       try {
         using (ManagementObjectSearcher s = new ManagementObjectSearcher("root\\WMI", "SELECT * FROM MSAcpi_ThermalZoneTemperature")) {

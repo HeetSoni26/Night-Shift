@@ -4,7 +4,7 @@ using System.Diagnostics;
 
 namespace NightShift {
   // Meeting / recording apps are never frozen, even when "freeze every other app" is on
-  // (same protected list as the macOS version: Zoom, Teams, Webex, ...).
+  // (the protected list: Zoom, Teams, Webex, ...).
   static class MeetingApps {
     static readonly string[] Tokens = new string[] {
       "zoom", "teams", "webex", "skype", "obs", "gotomeeting", "ringcentral",
@@ -28,7 +28,7 @@ namespace NightShift {
       "shellexperience", "textinput", "lockapp", "sihost", "taskhost", "dwm", "winlogon",
       "csrss", "services", "lsass", "smss", "svchost", "registry", "wininit", "audiodg",
       "fontdrvhost", "conhost", "openconsole", "widget", "webview2", "securityhealth",
-      "cmd", "powershell", "pwsh", "terminal", "insomnia"
+      "cmd", "powershell", "pwsh", "terminal", "nightshift"
     };
 
     public static bool Suspend(int pid) {

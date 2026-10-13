@@ -5,8 +5,7 @@ using System.Text.RegularExpressions;
 
 namespace NightShift {
   // Applies and undoes the Windows power settings that keep the machine awake with the
-  // lid closed. Every change is journaled before it is applied, exactly like the macOS
-  // original writes its pmset changes to a recovery journal first.
+  // lid closed. Every change is journaled, with its exact undo, before it is applied.
   class PowerManager {
     // Well-known power setting GUIDs (not localized, stable across Windows versions).
     public const string SubButtons = "4f971e89-eebd-4455-a8de-9e59040e7347";
@@ -15,7 +14,7 @@ namespace NightShift {
     public const string StandbyIdle = "29f6c1db-86da-48c5-9fdb-f2b67b1f44da";
     public const string HibernateIdle = "9d7815a6-7ee4-497e-8888-515a05f02364";
 
-    // Overlay ("power mode") that stands in for macOS Low Power Mode.
+    // Overlay ("power mode") used as the low-power state.
     public const string OverlayAliasMaxEnergySavings = "overlay_scheme_max_energy_savings";
     public const string OverlayMaxEnergySavings = "ded573b5-45a0-4f42-8737-46345c09c238";
 
