@@ -17,8 +17,6 @@ namespace NightShift {
     ToolStripMenuItem _mEnd;
     ToolStripMenuItem _mBrowser;
     ToolStripMenuItem _mQuit;
-    Icon _iconIdle;
-    Icon _iconActive;
     TimePopup _popup;
     SettingsForm _settings;
 
@@ -26,11 +24,9 @@ namespace NightShift {
       _cfg = cfg;
       _session = session;
       _exitRequest = exitRequest;
-      _iconIdle = IconFactory.OwlIcon(false);
-      _iconActive = IconFactory.OwlIcon(true);
       _menu = BuildMenu();
       _icon = new NotifyIcon();
-      _icon.Icon = _iconIdle;
+      _icon.Icon = IconFactory.OwlIcon(_session.Active);
       _icon.Text = "NightShift - idle";
       _icon.ContextMenuStrip = _menu;
       _icon.Visible = true;
@@ -38,7 +34,7 @@ namespace NightShift {
       _menu.Opening += MenuOpening;
       if (!_cfg.FirstRunSeen) {
         try {
-          _icon.ShowBalloonTip(5000, "NightShift", "Watching from the tray. Click the eye to keep your PC awake with the lid closed.", ToolTipIcon.Info);
+          _icon.ShowBalloonTip(5000, "NightShift", "Watching from the tray. Click the owl to keep your PC awake with the lid closed.", ToolTipIcon.Info);
         } catch {}
         _cfg.FirstRunSeen = true;
         _cfg.Save();
@@ -140,15 +136,13 @@ namespace NightShift {
     public void UpdateVisual() {
       if (_icon == null) return;
       bool active = _session.Active;
-      _icon.Icon = active ? _iconActive : _iconIdle;
+      _icon.Icon = IconFactory.OwlIcon(active); // adaptive: black on light taskbar, white on dark
       _icon.Text = active ? "NightShift - " + _session.RemainingText() + " left" : "NightShift - idle";
       if (_popup != null && !_popup.IsDisposed && _popup.Visible) _popup.UpdateState();
     }
 
     public void Dispose() {
       try { _icon.Visible = false; _icon.Dispose(); } catch {}
-      if (_iconIdle != null) _iconIdle.Dispose();
-      if (_iconActive != null) _iconActive.Dispose();
       _icon = null;
     }
   }

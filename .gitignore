@@ -1,4 +1,6 @@
 NightShift.exe
 tools/genicon.exe
-icon/NightShiftIdle.ico
-icon/NightShiftActive.ico
+icon/NightShiftIdleLight.ico
+icon/NightShiftIdleDark.ico
+icon/NightShiftActiveLight.ico
+icon/NightShiftActiveDark.ico

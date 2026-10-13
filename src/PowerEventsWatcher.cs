@@ -16,6 +16,7 @@ namespace NightShift {
     public event Action Suspended = delegate { };
     public event Action Resumed = delegate { };
     public event Action PowerStatusChanged = delegate { };
+    public event Action ThemeChanged = delegate { };
 
     public PowerEventsWatcher() {
       FormBorderStyle = FormBorderStyle.None;
@@ -67,6 +68,15 @@ namespace NightShift {
             PowerStatusChanged();
           }
         } catch (Exception ex) { Log.Error("power event handling failed", ex); }
+      } else if (m.Msg == 0x001A /* WM_SETTINGCHANGE */) {
+        // "ImmersiveColorSet" is broadcast when the light/dark system theme flips.
+        try {
+          string what = m.LParam == IntPtr.Zero ? null : Marshal.PtrToStringUni(m.LParam);
+          if (what == "ImmersiveColorSet") {
+            Log.Info("system theme changed");
+            ThemeChanged();
+          }
+        } catch {}
       }
       base.WndProc(ref m);
     }

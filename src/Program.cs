@@ -91,6 +91,12 @@ namespace NightShift {
         try { _session.CheckGuardsNow(); }
         catch (Exception ex) { Log.Error("power status change", ex); }
       };
+      _watcher.ThemeChanged += delegate {
+        try {
+          IconFactory.ClearCache();
+          if (_tray != null) _tray.UpdateVisual();
+        } catch (Exception ex) { Log.Error("theme change refresh", ex); }
+      };
       _watcher.Suspended += delegate {
         try {
           _journal.HeartbeatUtc = DateTime.UtcNow.ToString("o");

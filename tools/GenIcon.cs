@@ -1,10 +1,10 @@
 // Builds the NightShift icons from icon\owl-source.png (the logo image).
 // - trims white margins and strips any screenshot frame
-// - flood-fills the OUTER white to transparency; interior whites (the eyes) stay opaque
-// - tints the ink (idle: dark navy, active: amber) and writes a multi-size .ico
-// - can also export a 256px PNG for docs
+// - flood-fills the OUTER white to transparency; interior whites (the eyes) are
+//   re-colored with the "interior" color so the owl reads in both polarities
+// - optional thin ring just outside the silhouette (used for the inverted active state)
 //
-// usage: genicon <source.png> <out.ico> <r,g,b> [out256.png]
+// usage: genicon <source.png> <out.ico> <ink r,g,b> <interior r,g,b> <ring r,g,b|none> [out256.png]
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -16,14 +16,16 @@ using System.Runtime.InteropServices;
 class GenIcon {
   [STAThread]
   static int Main(string[] args) {
-    if (args.Length < 3) {
-      Console.Error.WriteLine("usage: genicon <source.png> <out.ico> <r,g,b> [out256.png]");
+    if (args.Length < 5) {
+      Console.Error.WriteLine("usage: genicon <source.png> <out.ico> <ink r,g,b> <interior r,g,b> <ring r,g,b|none> [out256.png]");
       return 1;
     }
     string src = args[0], outIco = args[1];
-    string[] rgb = args[2].Split(',');
-    Color ink = Color.FromArgb(int.Parse(rgb[0]), int.Parse(rgb[1]), int.Parse(rgb[2]));
-    string outPng = args.Length > 3 ? args[3] : null;
+    Color ink = ParseColor(args[2]);
+    Color interior = ParseColor(args[3]);
+    bool hasRing = !string.Equals(args[4], "none", StringComparison.OrdinalIgnoreCase);
+    Color ring = hasRing ? ParseColor(args[4]) : Color.Empty;
+    string outPng = args.Length > 5 ? args[5] : null;
     try {
       using (Bitmap source = new Bitmap(src)) {
         int w = source.Width, h = source.Height;
@@ -62,7 +64,7 @@ class GenIcon {
               int idx = (y + r.Top) * w + (x + r.Left);
               Color c;
               if (background[idx]) c = Color.FromArgb(0, ink);
-              else if (lum[idx] >= 200) c = Color.FromArgb(255, 255, 255, 255);
+              else if (lum[idx] >= 200) c = Color.FromArgb(255, interior);
               else {
                 int a = 255 - lum[idx];
                 if (a < 20) a = 0;
@@ -88,11 +90,12 @@ class GenIcon {
               g.InterpolationMode = InterpolationMode.HighQualityBicubic;
               g.PixelOffsetMode = PixelOffsetMode.HighQuality;
               g.DrawImage(square, new Rectangle(0, 0, s, s), new Rectangle(0, 0, side, side), GraphicsUnit.Pixel);
-              AddOutline(b, s);
+              if (hasRing) AddOutline(b, s, ring);
               images[i] = EncodeBmp(b);
               if (s == 256 && outPng != null) b.Save(outPng, ImageFormat.Png);
             }
           }
+          square.Dispose();
 
           using (FileStream fs = new FileStream(outIco, FileMode.Create))
           using (BinaryWriter wr = new BinaryWriter(fs)) {
@@ -114,7 +117,6 @@ class GenIcon {
             }
             for (int i = 0; i < images.Length; i++) wr.Write(images[i]);
           }
-          square.Dispose();
           Console.WriteLine("written: " + Path.GetFullPath(outIco) + (outPng != null ? " + " + Path.GetFullPath(outPng) : ""));
         }
       }
@@ -125,9 +127,14 @@ class GenIcon {
     }
   }
 
-  // A thin light ring just outside the silhouette, added per target size, so the dark
-  // owl reads on both light and dark taskbars (the user's logo is a black owl).
-  static void AddOutline(Bitmap b, int s) {
+  static Color ParseColor(string s) {
+    string[] p = s.Split(',');
+    return Color.FromArgb(int.Parse(p[0]), int.Parse(p[1]), int.Parse(p[2]));
+  }
+
+  // A thin ring just outside the silhouette, added per target size, so the inverted
+  // owl stays readable on the same background it is drawn against.
+  static void AddOutline(Bitmap b, int s, Color ring) {
     int r = Math.Max(1, (int)Math.Round(s * 0.05));
     bool[] ink = new bool[s * s];
     int minX = s, minY = s, maxX = -1, maxY = -1;
@@ -166,7 +173,7 @@ class GenIcon {
         }
         if (near) {
           int p = idx * 4;
-          px[p] = 248; px[p + 1] = 241; px[p + 2] = 238; px[p + 3] = 255; // BGRA light
+          px[p] = ring.B; px[p + 1] = ring.G; px[p + 2] = ring.R; px[p + 3] = 255; // BGRA
         }
       }
     }

@@ -15,16 +15,22 @@ if not exist icon\owl-source.png (
   exit /b 1
 )
 
-if not exist icon\NightShiftIdle.ico (
+if not exist icon\NightShiftIdleLight.ico (
   if not exist tools\genicon.exe "%CSC%" /nologo /out:tools\genicon.exe tools\GenIcon.cs
   if errorlevel 1 exit /b 1
-  tools\genicon.exe icon\owl-source.png icon\NightShiftIdle.ico 26,30,42
+  rem Adaptive owl: black on a light taskbar, white on a dark one; inverted (with a
+  rem thin contrast ring) while a session runs. Last arg exports a 256px doc image.
+  tools\genicon.exe icon\owl-source.png icon\NightShiftIdleLight.ico 13,15,19 244,245,248 none icon\owl-black-256.png
   if errorlevel 1 exit /b 1
-  tools\genicon.exe icon\owl-source.png icon\NightShiftActive.ico 255,173,39 icon\NightShift-256.png
+  tools\genicon.exe icon\owl-source.png icon\NightShiftIdleDark.ico 244,245,248 13,15,19 none
+  if errorlevel 1 exit /b 1
+  tools\genicon.exe icon\owl-source.png icon\NightShiftActiveLight.ico 244,245,248 13,15,19 13,15,19
+  if errorlevel 1 exit /b 1
+  tools\genicon.exe icon\owl-source.png icon\NightShiftActiveDark.ico 13,15,19 244,245,248 244,245,248 icon\owl-white-256.png
   if errorlevel 1 exit /b 1
 )
 
-"%CSC%" /nologo /target:winexe /platform:anycpu /optimize+ /out:NightShift.exe /win32icon:icon\NightShiftIdle.ico /res:icon\NightShiftIdle.ico,NightShiftIdle.ico /res:icon\NightShiftActive.ico,NightShiftActive.ico /r:System.Web.Extensions.dll /r:System.Management.dll src\*.cs
+"%CSC%" /nologo /target:winexe /platform:anycpu /optimize+ /out:NightShift.exe /win32icon:icon\NightShiftIdleLight.ico /res:icon\NightShiftIdleLight.ico,NightShiftIdleLight.ico /res:icon\NightShiftIdleDark.ico,NightShiftIdleDark.ico /res:icon\NightShiftActiveLight.ico,NightShiftActiveLight.ico /res:icon\NightShiftActiveDark.ico,NightShiftActiveDark.ico /r:System.Web.Extensions.dll /r:System.Management.dll src\*.cs
 if errorlevel 1 exit /b 1
 echo Build OK: NightShift.exe
 endlocal

@@ -21,7 +21,7 @@ namespace NightShift {
       StartPosition = FormStartPosition.CenterScreen;
       ClientSize = new Size(486, 586);
       Font = new Font("Segoe UI", 9f);
-      try { Icon = IconFactory.OwlIcon(true); } catch {}
+      try { Icon = IconFactory.OwlIcon(false); } catch {}
 
       GroupBox g1 = Group("When the lid closes during a session", 10, 10, 466, 152);
       _cDisplay = Check(g1, "Turn the display off (backlight to 0)", 14, 24);

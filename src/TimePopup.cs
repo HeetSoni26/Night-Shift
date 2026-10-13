@@ -9,7 +9,7 @@ namespace NightShift {
     static readonly Color Bg = Color.FromArgb(28, 33, 48);
     static readonly Color Fg = Color.FromArgb(232, 235, 244);
     static readonly Color Dim = Color.FromArgb(154, 163, 184);
-    static readonly Color Accent = Color.FromArgb(255, 173, 39);
+    static readonly Color Accent = Color.FromArgb(244, 245, 248);
     static readonly Color Danger = Color.FromArgb(255, 93, 93);
     static readonly Color ButtonBg = Color.FromArgb(42, 49, 69);
     static readonly Color ButtonHover = Color.FromArgb(57, 66, 95);

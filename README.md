@@ -1,100 +1,117 @@
-<p align="center"><img src="icon/NightShift-256.png" width="150" alt="NightShift owl"></p>
+<p align="center">
+  <img src="icon/owl-logo.svg" width="160" alt="NightShift logo">
+</p>
 
-# NightShift for Windows
+<h1 align="center">NightShift</h1>
 
-**Keep your laptop awake with the lid closed - for timed agent sessions.**
+<p align="center">
+  <strong>Keep your Windows laptop awake with the lid closed, for timed agent sessions.</strong><br>
+  The owl watches the night shift so your machine can keep working while you are away.
+</p>
 
-The owl lives in your system tray. Dark while idle; the whole owl turns amber while a session runs. Click it, set a time, close the lid, walk away - your work keeps running.
-
-Built as a Windows port of [krishhgg/Insomnia](https://github.com/krishhgg/Insomnia) (macOS): same ideas, same safety model, rebuilt on Windows mechanisms. No admin rights, no SDK, no runtime to install.
+<p align="center">
+  <img alt="platform" src="https://img.shields.io/badge/platform-Windows%2010%20%2F%2011-0078D6?logo=windows11&logoColor=white">
+  <img alt="dependencies" src="https://img.shields.io/badge/dependencies-none-success">
+  <img alt="admin" src="https://img.shields.io/badge/admin%20rights-not%20required-success">
+  <img alt="license" src="https://img.shields.io/badge/license-MIT-informational">
+</p>
 
 ---
 
-## What is NightShift? (the simple version)
+## The problem
 
-Your laptop is trained to sleep the moment you close the lid. Great for battery, terrible when something is *working* for you in the background.
+Windows puts your laptop to sleep the moment you close the lid. That is exactly wrong when something is working for you in the background.
 
-**Real-life example:** you tell Claude Code (or Codex): *"Build this feature, write the tests, fix anything broken."* That's a 2-hour job. You don't want to watch it. But if you close the lid, Windows sleeps the laptop within seconds → your agent freezes mid-task → you come back to half-done work.
+> You hand your AI coding agent a two-hour task, close the lid and walk away. Windows suspends the machine within seconds, the agent freezes mid-job, and you come back to half-finished work.
 
-With NightShift:
+NightShift holds the machine awake for exactly as long as you asked, then quietly puts everything back the way it was.
 
-1. Click the **owl** in the tray.
-2. Type `0` days, `2` hours, `0` minutes → press **Enter**.
-3. Close the lid and walk away.
+## Features
 
-The laptop stays awake with the lid closed. The agent keeps working the full 2 hours. When the timer ends, the laptop goes back to sleep on its own. You open the lid later and the work is done.
+| | |
+|---|---|
+| **Timed sessions** | Click the owl, enter days / hours / minutes, press Enter. Add time or end early at any moment. |
+| **Adaptive tray owl** | Black on a light taskbar, white on a dark one. The owl inverts while a session runs. |
+| **Journal-before-apply safety** | Every power change is written to disk, with its exact undo, *before* it is applied. |
+| **Self-healing** | A scheduled recovery task undoes everything within a minute if the app ever dies mid-session. |
+| **Quiet lid close** | Display off, audio muted, and optionally apps frozen (Slack, Discord, ...). Meeting and recording apps are never touched. |
+| **Guards** | Low-power mode and session-end thresholds for battery; best-effort heat rules. |
+| **Browser unthrottling** | One-click relaunch of a running Chromium browser with background throttling disabled. |
+| **Zero footprint** | No admin rights, no SDK, no runtime install. One exe built with the compiler Windows already ships. |
 
-## How to use it - only 3 gestures
+## Install
+
+```powershell
+git clone https://github.com/HeetSoni26/Night-Shift.git
+cd Night-Shift
+powershell -ExecutionPolicy Bypass -File .\install.ps1
+```
+
+Requirements: Windows 10 (1709+) or Windows 11, laptop or desktop. The installer builds the exe, copies it to `%LOCALAPPDATA%\Programs\NightShift`, registers the recovery task, adds a startup shortcut and starts the owl in your tray.
+
+## Usage
 
 | You want to... | Do this |
 |---|---|
-| **Start a session** | Click the owl → type days / hours / minutes → **Enter** |
-| **Add more time** | Click the owl again → type more time (or use the +15m / +30m / +1h / +6h buttons) |
-| **Stop early** | Click the owl → **press and hold** the red *Hold to end* button for 1.5 s |
+| Start a session | Click the owl, type `d` / `h` / `m`, press **Enter** |
+| Add time | Click the owl again, or use the `+15m` `+30m` `+1h` `+6h` buttons |
+| End early | **Press and hold** the red hold-to-end control for 1.5 s |
 
-Right-click the owl for the menu: status, add time, end early, *Relaunch browser unthrottled*, Settings, open logs, Quit. While a session runs, hovering the owl shows the countdown.
+Right-click the owl for status, add time, end early, *Relaunch browser unthrottled*, Settings, logs and Quit. Quitting during a session asks for confirmation and restores all settings first. When no session is running, NightShift changes nothing about how Windows behaves.
 
-## What happens inside (still simple)
+## How it works
 
-**When you press Start**, NightShift asks Windows - politely, with no admin rights - to change three power settings for the duration: *never sleep when idle*, *never hibernate when idle*, and *if the lid closes: do nothing*. Before touching anything, it writes down what it changed **and how to change it back** in a journal file. Like borrowing your friend's bike and leaving a note: *"I took it, here's how to return it."*
+1. **Start:** NightShift sets the lid close action to "do nothing" and idle sleep / hibernate to "never" for the duration. Each change is journaled with its undo command before it is applied.
+2. **While you are away:** a heartbeat refreshes the journal every 15 seconds. Closing the lid quiets the machine (display off, mute, optional app freeze) while your work keeps running.
+3. **If anything dies:** the `NightShiftRecovery` task runs `NightShift.exe --recover` every minute and uses the journal to undo everything, resume frozen apps, unmute and restore brightness by itself.
+4. **Timer end:** all settings are restored exactly; if the lid is still closed with no external display, the machine is put to sleep.
 
-**Every 15 seconds** it taps the note: "still alive."
+## Configuration
 
-**When you close the lid**, the session stays on but the laptop goes quiet: panel brightness to 0 and display off, audio muted, and (if you enable it in Settings) chatty apps like Slack, WhatsApp and Discord get frozen - a true pause, like `SIGSTOP` - so they can't wake anything or drain the battery. Your agent in the terminal keeps running at full speed. The timer keeps counting.
+Right-click the owl and open Settings: lid-close actions (display off, mute, app freezing), battery thresholds (low-power below 40% and end below 10% by default, 0 disables each), heat rules, and whether to sleep at session end when the lid is still closed.
 
-**When the timer ends**, everything goes back exactly the way it was: brightness, sound, frozen apps, power settings. And since the lid is still closed with no external display, the laptop puts itself to sleep. Normal life resumes.
+| File | Purpose |
+|---|---|
+| `%LOCALAPPDATA%\NightShift\config.json` | Settings |
+| `%LOCALAPPDATA%\NightShift\journal.json` | Recovery journal (transient, empty when idle) |
+| `%LOCALAPPDATA%\NightShift\Logs\` | Daily logs, 14-day retention |
 
-## The safety net
+Command line: `--recover` (used by the task), `--selftest` (read-only diagnostics), `--test-power` (apply and undo power settings, verify the restore).
 
-- **Journal before apply.** Every change - with its exact undo command - is written to disk *before* it is applied.
-- **Recovery agent.** A scheduled task (`NightShiftRecovery`) runs `NightShift.exe --recover` every minute. If the journal shows a live session but the app is dead (crash, kill, power loss), it puts every setting back, thaws frozen apps, unmutes and restores brightness - by itself, within a minute.
-- **Never races the app.** While any NightShift process is alive, the recovery agent does nothing.
-- **Battery guards.** Switch to a low-power mode below 40% (configurable), end the session below 10% (configurable, 0 disables each).
-- **Heat guards** (best effort; many laptops expose no WMI thermal sensor).
-- **Quit is protected.** Quitting during a session asks for confirmation and undoes everything.
-
-## Good to know
-
-- **When no session is running, NightShift does nothing.** Windows behaves exactly as it always did.
-- **App freezing ships off by default** (Settings → lid-close actions) because it pauses real apps - opt in when you want it.
-- **"Relaunch browser unthrottled"** restarts a running Chromium browser (Chrome/Edge/Brave/Arc/Opera/Vivaldi) with background-tab throttling disabled, so web-based agents keep full speed with the lid closed. It asks first; tabs are restored.
-- **Settings** live at `%LOCALAPPDATA%\NightShift\config.json` (edited via the Settings dialog); logs at `%LOCALAPPDATA%\NightShift\Logs` with 14-day retention.
-
-## Install / uninstall
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\install.ps1              # build + install + start
-powershell -ExecutionPolicy Bypass -File .\uninstall.ps1            # remove, keep settings
-powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -Purge     # remove + wipe everything
-```
-
-Requirements: Windows 10 (1709+) or 11. Works on Modern Standby (S0) and classic S3 laptops. A desktop works too - as an idle-sleep blocker only.
-
-## Command line
+## Build from source
 
 ```
-NightShift.exe              tray app
-NightShift.exe --recover    undo pending changes (used by the recovery task)
-NightShift.exe --selftest   read-only diagnostics
-NightShift.exe --test-power apply and undo the power settings, verify the restore
+build.cmd
 ```
+
+Compiles `src\*.cs` with the .NET Framework 4 C# compiler that ships with Windows and regenerates the tray icons from `icon\owl-source.png`. No SDK, no NuGet, no internet access needed.
 
 ## Differences from the macOS original
 
-Honest list: no iPhone hotspot handoff and no tmux nudge (both macOS-specific); "Low Power Mode" is Windows' power-mode overlay, with panel dimming as fallback on systems without overlays; the mic is not hardware-disconnected on lid close (Apple Silicon feature). Added for Windows: monitor power-off, a `SetThreadExecutionState` hold as extra insurance on Modern Standby machines, and Chromium relaunch flags tuned for Windows throttling. Unlike the macOS version, **no admin rights are needed at all**.
+NightShift is a Windows port of [krishhgg/Insomnia](https://github.com/krishhgg/Insomnia) (macOS). Differences: no iPhone hotspot handoff and no tmux nudge (both are macOS-specific); "low power mode" uses the Windows power-mode overlay, falling back to panel dimming where overlays are unsupported; the microphone is not hardware-disconnected on lid close. Added for Windows: adaptive tray theming, monitor power-off, an execution-state hold for Modern Standby machines, and Windows-tuned browser relaunch flags. Unlike the macOS version, no elevation is required at all.
 
-## Under the hood (for the curious)
+## FAQ
 
-- Written in C# (WinForms), compiled with the .NET Framework 4 compiler that ships with Windows - `build.cmd` needs no SDK and no internet.
-- Lid state, suspend/resume and AC/battery changes arrive via `RegisterPowerSettingNotification` (`GUID_LIDSWITCH_STATE_CHANGE`).
-- Power settings via `powercfg` (hidden settings included - needed on Modern Standby laptops where the lid action is hidden).
-- App freezing via `NtSuspendProcess` / `NtResumeProcess`; audio via Core Audio (`IAudioEndpointVolume`); brightness via WMI (`WmiSetBrightness`).
-- `tools\GenIcon.cs` bakes the owl into `icon\NightShift.ico`; the tray icon is drawn at runtime by the same geometry.
+<details>
+<summary>Does it change my settings permanently?</summary>
+No. Everything it touches is journaled and restored when the session ends, when you quit, or by the recovery task if the app ever crashes mid-session.
+</details>
 
-## Safety note
+<details>
+<summary>What happens on a desktop PC?</summary>
+It works as an idle-sleep blocker. The lid features simply never trigger.
+</details>
 
-The same caution as the original: a running timer is not a thermal guarantee. Keep the machine on a hard, ventilated surface - not a closed bag or blanket - when running with the lid closed.
+<details>
+<summary>Is it safe to run overnight on battery?</summary>
+The battery guards end the session at your thresholds, and the recovery task means the machine cannot stay stuck awake. As with any closed-lid run, keep the laptop on a hard, ventilated surface, never in a bag.
+</details>
+
+<details>
+<summary>How do I remove it?</summary>
+`powershell -ExecutionPolicy Bypass -File .\uninstall.ps1` keeps your settings; add `-Purge` to wipe them too.
+</details>
 
 ## Credits
 
-Concept and macOS original: [krishhgg/Insomnia](https://github.com/krishhgg/Insomnia) (MIT). Windows port rebranded as **NightShift**. MIT licensed.
+Concept and macOS original: [krishhgg/Insomnia](https://github.com/krishhgg/Insomnia), MIT licensed. Windows port by [HeetSoni26](https://github.com/HeetSoni26). See [LICENSE](LICENSE).
